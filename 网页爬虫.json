@@ -1,0 +1,803 @@
+{
+  "name": "网页爬虫",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        880,
+        4256
+      ],
+      "id": "49d1ea4b-1172-430d-b006-fc9dc017ba4f",
+      "name": "When clicking ‘Test workflow’",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3002/v1/scrape ",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"https://www.jiqizhixin.com/\",\n  \"formats\": [\"markdown\"],\n  \"includeTags\": [\".home__center-left__list\"],\n  \"waitFor\": 5000\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1232,
+        4128
+      ],
+      "id": "821f4109-30ac-4795-8850-b77561383cf6",
+      "name": "本地爬虫接口"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2144,
+        4256
+      ],
+      "id": "4c58ae6b-baf0-4ccc-8a2f-3493aba47380",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3002/v1/scrape ",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.link }}\",\n  \"formats\": [\"markdown\"],\n  \"includeTags\": [\".detail__info-body\"],\n  \"waitFor\": 3000\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2384,
+        4192
+      ],
+      "id": "179c782d-127e-4df1-ba26-8db20f247c47",
+      "name": "网页获取"
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "getAll",
+        "simple": false
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1616,
+        4352
+      ],
+      "id": "d6a65df2-a3bf-4d6e-8f5d-cf316ec54e87",
+      "name": "Notion1",
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "link",
+              "field2": "properties.url.url"
+            }
+          ]
+        },
+        "joinMode": "keepNonMatches",
+        "outputDataFrom": "input1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        1936,
+        4272
+      ],
+      "id": "830d396f-a253-411a-9476-0dc9b75c2088",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * 将Markdown文本转换为纯文本\n * @param {string} markdown - 输入的Markdown格式文本\n * @returns {string} - 转换后的纯文本字符串\n */\nfunction markdownToText(markdown) {\n    if (!markdown) return '';\n\n    let text = markdown;\n\n    // 移除代码块\n    text = text.replace(/```[\\s\\S]*?```/g, '');\n    text = text.replace(/`([^`]+)`/g, '$1');\n\n    // 移除标题符号\n    text = text.replace(/^#{1,6}\\s+/gm, '');\n\n    // 移除粗体和斜体\n    text = text.replace(/[*_]{2}([^*_]+)[*_]{2}/g, '$1'); // 粗体\n    text = text.replace(/[*_]([^*_]+)[*_]/g, '$1'); // 斜体\n\n    // 处理链接\n    text = text.replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, '$1'); // [文本](链接)\n    text = text.replace(/\\[([^\\]]+)\\]\\[[^\\]]*\\]/g, '$1'); // [文本][引用]\n\n    // 移除图片标记\n    text = text.replace(/!\\[([^\\]]*?)\\]\\([^)]+\\)/g, '$1');\n    \n    // 处理各种非标准格式的图片标记\n    // 处理类似 \"!图片                )\" 的情况\n    text = text.replace(/!图片\\s*\\)/g, '');\n    // 处理类似 \"!图片                \" 的情况（在行尾）\n    text = text.replace(/!图片\\s*$/g, '');\n    // 处理任何以感叹号开头后跟\"图片\"的内容\n    text = text.replace(/!图片[\\s\\S]*?\\)/g, '');\n    // 处理可能残留的右括号\n    text = text.replace(/^\\s*\\)\\s*$/gm, '');\n    // 处理可能残留的空行\n    text = text.replace(/^\\s*$/gm, '');\n\n    // 处理列表\n    text = text.replace(/^[\\s]*[\\-*+]\\s+/gm, ''); // 无序列表\n    text = text.replace(/^[\\s]*\\d+\\.\\s+/gm, ''); // 有序列表\n\n    // 处理引用\n    text = text.replace(/^\\s*>\\s+/gm, '');\n\n    // 处理水平分割线\n    text = text.replace(/^\\s*[-*_]{3,}\\s*$/gm, '\\n');\n\n    // 移除SVG相关标签及其内容\n    text = text.replace(/<svg[^>]*>(([\\s\\S]*?)<\\/svg>)?/gi, '');\n    \n    // 增强SVG标签清理（包含自闭合标签和更多元素）\n    const svgElements = 'svg|rect|circle|path|line|polygon|polyline|g|defs|use|symbol|ellipse|text|image|clipPath|mask|pattern|filter|marker|linearGradient|radialGradient|stop|tspan|textPath|animate|animateMotion|animateTransform|set|foreignObject|switch|desc|title|metadata';\n    text = text.replace(new RegExp(`<(${svgElements})(\\\\s[^>]*)?\\\\/?>`,'gi'), '');\n    text = text.replace(new RegExp(`<\\\\/(${svgElements})>`,'gi'), '');\n    \n    // 移除单独的SVG标签片段（如' rect /rect /g /g /svg'）\n    text = text.replace(/[\\s']+(?:rect|circle|path|g|svg|defs|use|symbol)\\s*\\/?/gi, ' ');\n    text = text.replace(/[\\s']+\\/(?:rect|circle|path|g|svg|defs|use|symbol)\\s*/gi, ' ');\n    \n    // 移除括号内的SVG标签片段\n    text = text.replace(/\\([^\\)]*?(?:rect|circle|path|g|svg)[^\\)]*?\\)/gi, '');\n    \n    // 清理SVG属性和标签片段\n    // 处理类似 ' fill=' FFFFFF' rect x='249' y='126' width='1' height='1' /rect /g /g /svg )' 的内容\n    text = text.replace(/['\"\\s]+(fill|x|y|width|height|rx|ry|cx|cy|r|d|points|viewBox|xmlns)=['\"]?[^'\">\\s]*['\"]?/gi, ' ');\n    text = text.replace(/\\s+(?:\\/)?(?:rect|circle|path|g|svg|defs|use|symbol|ellipse|text|image)(?:\\s+|\\/)/gi, ' ');\n    text = text.replace(/\\s+\\/(?:rect|circle|path|g|svg|defs|use|symbol|ellipse|text|image)(?:\\s+|$)/gi, ' ');\n    \n    // 移除SVG和HTML常见属性\n    const commonAttributes = 'xmlns|version|viewBox|width|height|class|style|id|fill|stroke|d|points|transform|x|y|cx|cy|r|x1|y1|x2|y2|dx|dy|offset|gradientUnits|spreadMethod|patternUnits|patternTransform|markerWidth|markerHeight|refX|refY|orient|font-size|font-family|text-anchor|alignment-baseline|href|xlink:href|preserveAspectRatio';\n    text = text.replace(new RegExp(`\\\\s+(${commonAttributes})=[\\\"\\']([^\\\"\\']*)[\\\"\\'](?:\\\\s+|$)`,'gi'), ' ');\n    \n    // 移除data URI和编码内容\n    text = text.replace(/data:(?:[^;]+;)*(?:base64,)?[a-zA-Z0-9+/]+={0,2}/g, '');\n    text = text.replace(/%[0-9a-fA-F]{2}/g, ' ');\n    \n    // 最终清理：移除任何剩余的SVG相关内容\n    // 处理括号中的SVG内容\n    text = text.replace(/\\([^\\)]*(?:svg|rect|g|path|circle)[^\\)]*\\)/gi, '');\n    // 处理引号中的SVG内容\n    text = text.replace(/'[^']*(?:svg|rect|g|path|circle)[^']*'/gi, '');\n    text = text.replace(/\"[^\"]*(?:svg|rect|g|path|circle)[^\"]*\"/gi, '');\n    // 处理任何剩余的SVG标签片段\n    text = text.replace(/(?:\\/)?(?:svg|rect|g|path|circle|defs|use|symbol)(?:\\/)?/gi, '');\n    \n    // 移除其他HTML标签\n    text = text.replace(/<[^>]+>/g, '');\n\n    // 处理转义字符\n    text = text.replace(/\\\\([\\\\`*_{}\\[\\]()#+\\-.!])/g, '$1');\n\n    // 清理多余的空行\n    text = text.replace(/\\n\\s*\\n/g, '\\n\\n');\n    text = text.replace(/^\\s+|\\s+$/g, '');\n\n    return text;\n}\n\n/**\n * 将文本按指定长度分段\n * @param {string} text - 输入文本\n * @param {number} segmentLength - 每段文本的最大长度\n * @returns {string[]} - 分段后的文本数组\n */\nfunction splitTextIntoSegments(text, segmentLength = 1800) {\n    const segments = [];\n    let remainingText = text;\n\n    while (remainingText.length > 0) {\n        if (remainingText.length <= segmentLength) {\n            segments.push(remainingText);\n            break;\n        }\n\n        let endIndex = segmentLength;\n        // 尝试在句子或段落边界处分段\n        const nextParagraph = remainingText.indexOf('\\n\\n', endIndex - 100);\n        const nextSentence = remainingText.indexOf('. ', endIndex - 100);\n\n        if (nextParagraph !== -1 && nextParagraph < endIndex + 100) {\n            endIndex = nextParagraph;\n        } else if (nextSentence !== -1 && nextSentence < endIndex + 100) {\n            endIndex = nextSentence + 1;\n        }\n\n        segments.push(remainingText.substring(0, endIndex).trim());\n        remainingText = remainingText.substring(endIndex).trim();\n    }\n\n    return segments;\n}\n\n// 示例输入\nconst markdownInput = $input.first().json.data.markdown;\nconst plainText = markdownToText(markdownInput);\nconst textSegments = splitTextIntoSegments(plainText);\n\n// 将文本段落转换为规范的block对象格式\nconst blocks = textSegments.map(segment => ({\n    object: 'block',\n    type: 'paragraph',\n    paragraph: {\n        rich_text: [\n            {\n                type: 'text',\n                annotations: {\n                    bold: false,\n                    strikethrough: false,\n                    underline: false,\n                    italic: false,\n                    code: false,\n                    color: 'default'\n                },\n                text: {\n                    content: segment\n                }\n            }\n        ]\n    }\n}));\n\nreturn {\n    blocks: blocks\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        4192
+      ],
+      "id": "d2b2055f-ecdd-497b-bf7b-013616635cb4",
+      "name": "将Markdown文本转换为纯文本"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.notion.com/v1/blocks/{{ $json.id }}/children",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "children",
+              "value": "={{ $('将Markdown文本转换为纯文本').item.json.blocks }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3104,
+        4272
+      ],
+      "id": "9c990ed4-8582-47d5-b853-efe0b53824f5",
+      "name": "HTTP Request",
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "32273411-6a15-8063-86d0-c9858d725855",
+          "mode": "list",
+          "cachedResultName": "AI文章收集",
+          "cachedResultUrl": "https://www.notion.so/322734116a15806386d0c9858d725855"
+        },
+        "title": "={{ $('网页获取').item.json.data.metadata.title }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "url|url",
+              "ignoreIfEmpty": true,
+              "urlValue": "={{ $('Loop Over Items').item.json.link }}"
+            },
+            {
+              "key": "发布日期|date",
+              "date": "={{ $('Loop Over Items').item.json.publishTime }}"
+            },
+            {
+              "key": "tag|rich_text",
+              "textContent": "={{ $('Loop Over Items').item.json.tagText }}"
+            }
+          ]
+        },
+        "options": {
+          "iconType": "emoji"
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        2848,
+        4192
+      ],
+      "id": "50b0aee6-0264-4993-88af-6ed3adc264cc",
+      "name": "Notion",
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## tips\n配置好参数走通流程后，后面可以改成定时触发，如每个小时执行一次，同步执行平台的资讯内容",
+        "height": 100,
+        "width": 340
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1152,
+        4448
+      ],
+      "typeVersion": 1,
+      "id": "9227da4c-7bb2-43e6-afdb-0ab15538cc40",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取 Firecrawl 爬取到的 Markdown 纯文本\nconst markdownText = $input.first().json.data.markdown;\n\n// 过滤掉空行，将文本变成一行行的纯数据数组\nconst lines = markdownText.split('\\n').filter(line => line.trim() !== '');\n\nconst results = [];\nlet currentArticle = {};\nlet tags = [];\n\n// 遍历每一行，智能推导数据结构\nfor (let i = 0; i < lines.length; i++) {\n  const line = lines[i];\n  \n  // 使用正则提取图片链接里的 文章ID (即 cover_image/ 后面的那一串字符)\n  const imgMatch = line.match(/!\\[.*?\\]\\(.*\\/cover_image\\/([^\\/]+)\\//);\n  \n  if (imgMatch) {\n    // 1. 如果匹配到了图片行，说明当前这篇完整文章的数据收集完毕了\n    const articleId = imgMatch[1];\n    \n    // 🌟 核心智能：自动拼接出最完美的真实文章链接\n    currentArticle.link = `https://www.jiqizhixin.com/articles/${articleId}`;\n    \n    if (tags.length > 0) {\n      currentArticle.tags = [...tags]; // 保存标签\n    }\n    \n    // 压入最终输出结果\n    results.push({ json: currentArticle });\n    \n    // 清空缓存，准备装载下一篇文章\n    currentArticle = {};\n    tags = [];\n  } else {\n    // 2. 如果不是图片行，按顺序装填：第一行是标题，第二行是时间，中间夹着的是标签\n    if (!currentArticle.title) {\n      currentArticle.title = line.trim();\n    } else if (!currentArticle.publishTime) {\n      currentArticle.publishTime = line.trim();\n    } else {\n      // 标题和时间都有了，剩下的纯文本肯定是标签\n      tags.push(line.trim());\n    }\n  }\n}\n\n// 输出完美的 JSON 结构给 n8n 的下一个节点\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        4128
+      ],
+      "id": "1b5df16c-9d8f-4b54-b728-c0c42c97f9b7",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取上一个节点传入的所有数据\nconst items = $input.all();\n\n// 获取当前时间，用于推算年份\nconst now = new Date();\nconst currentYear = now.getFullYear();\n\n// 遍历每一条数据进行时间转换\nfor (let item of items) {\n  const rawTime = item.json.publishTime; // 例如：\"03月13日\"\n  \n  if (rawTime) {\n    // 使用正则提取月份和日期\n    const match = rawTime.match(/(\\d+)\\s*月\\s*(\\d+)\\s*日/);\n    \n    if (match) {\n      // JavaScript 的 Date 对象中，月份是从 0 开始的（0代表1月，2代表3月）\n      const month = parseInt(match[1], 10) - 1; \n      const day = parseInt(match[2], 10);\n      \n      // 构建日期对象，假设时间为当天的 00:00:00（你也可以根据需要改成 08:00:00 等）\n      let publishDate = new Date(currentYear, month, day, 0, 0, 0);\n      \n      // 智能纠错（跨年处理）：如果算出来的日期比此时此刻还要晚，那这篇文章肯定是去年的\n      if (publishDate > now) {\n        publishDate.setFullYear(currentYear - 1);\n      }\n      \n      // 核心：将其转换为 ISO 8601 字符串并覆写原字段\n      item.json.publishTime = publishDate.toISOString();\n    }\n  }\n}\nfor (let item of items) {\n  // ... 之前处理时间的逻辑 ...\n\n  // 核心补丁：确保 tags 永远存在，即使是空的\n  if (!item.json.tags) {\n    item.json.tags = []; // 或者赋值为 \"\"，取决于你 Notion 的字段类型\n  }\n\n  // 核心补丁：\n  // 如果 tags 存在且是数组，用逗号连接成字符串\n  // 如果 tags 不存在，给一个空字符串 \"\" 或者 \"无标签\"\n  if (item.json.tags && Array.isArray(item.json.tags)) {\n    item.json.tagText = item.json.tags.join(', '); \n  } else {\n    item.json.tagText = \"\"; // Notion 接受空字符串，不会报错\n  }\n  \n}\n// 返回处理后的数据给下一个节点\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        4128
+      ],
+      "id": "96476091-2a9c-41c8-95ca-458451d92658",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {
+    "本地爬虫接口": [
+      {
+        "json": {
+          "success": true,
+          "data": {
+            "markdown": "刚刚，腾讯电脑“龙虾管家”重磅上线\n\n03月13日\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/737a2f2d-cc73-402f-b481-0c66cdf6dc96/c774ebf4-8bb4-4963-8309-69a91cf55dc7.png?imageView2/1/w/81/h/54)\n\nOpenClaw「App」榜单，国产Skill下载量冲上第一：能给龙虾接入现实世界\n\n03月13日\n\nSkill\n\n百度\n\nOpenclaw\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/c318d768-a48e-45df-97eb-2ece204af30f/0__1_.jpg?imageView2/1/w/81/h/54)\n\nMLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统\n\n03月13日\n\nStreamDiffusionV2\n\nMLSys 2026\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/f9d444cb-56b5-44e3-9843-73f3c83d6ade/0.jpg?imageView2/1/w/81/h/54)\n\n阿里云发布手机“一键养虾”产品JVS Claw：3分钟实现养虾自由\n\n03月13日\n\nOpenclaw\n\n阿里云\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/7ad1acff-c8dc-428a-a024-65467574508e/Screenshot_2026-03-13_at_18.39.17.png?imageView2/1/w/81/h/54)\n\nMCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成\n\n03月13日\n\nCLI\n\nAPI\n\nMCP\n\nPerplexity\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e/0__97_.jpg?imageView2/1/w/81/h/54)\n\nAI编程助手竟成「内鬼」？SKILLJECT：当「技能包」变成「特洛伊木马」\n\n03月13日\n\n自动化攻击框架\n\nSKILLJECT\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/2e726d68-5c13-4797-9ac5-1321b7798a0e/0__96_.jpg?imageView2/1/w/81/h/54)\n\n王兴兴、郭彦东、彭志辉、王鹤入选福布斯中国科创人物榜单，中国具身智能“核心版图”正式确立\n\n03月13日\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/cf12b88f-08a1-4053-a48d-101a84f40b21/ScreenShot_2026-03-13_210628_652.png?imageView2/1/w/81/h/54)\n\n3亿美元巨额融资，AI视频新独角兽爱诗科技，正在抢跑「实时世界模型」\n\n03月13日\n\n视频生成\n\n世界模型\n\n爱诗科技\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/63a92219-3451-4e57-a9e9-de15afce9dc5/0__95_.jpg?imageView2/1/w/81/h/54)\n\n这年头学不会数理化，只能怪自己懒，谷歌NotebookLM上新，秒出科普视频\n\n03月13日\n\nNotebookLM\n\n谷歌\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/98be0a19-50b6-4bc2-813e-a3f58c885197/0__94_.jpg?imageView2/1/w/81/h/54)\n\n有效思考激发多模态智能体决策潜力！清华&北大&腾讯联合提出GTR训练新框架\n\n03月13日\n\nGuided Thought Reinforcement\n\n思维崩塌\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/d3da5ca5-9c73-46e2-9e3d-70565ee25d9c/0__93_.jpg?imageView2/1/w/81/h/54)\n\n让AI学会解释自己：MIT教会模型从内心提取概念，实现更准、更透明的决策\n\n03月13日\n\nAI for Science\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/8c6ab3a2-db69-4ec5-a39a-7d866e99c0fb/iShot_2026-03-13_12.24.01.png?imageView2/1/w/81/h/54)\n\n杜少雷、安波、杨凯峪，三位世界级 AI 科学家加入MiroMind\n\n03月13日\n\n陈天桥\n\nMiroMind\n\n![img](https://image.jiqizhixin.com/uploads/article/cover_image/85502f4b-74d0-49f9-ada6-88309bbf7b62/0__92_.jpg?imageView2/1/w/81/h/54)",
+            "metadata": {
+              "viewport": "width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no",
+              "og:type": "website",
+              "theme-color": "#ffffff",
+              "twitter:site": "@SyncedTech",
+              "description": "机器之心",
+              "language": "en",
+              "twitter:card": "summary",
+              "og:site_name": "机器之心",
+              "format-detection": "telephone=no",
+              "ogSiteName": "机器之心",
+              "og:url": "https://www.jiqizhixin.com/",
+              "csrf-token": "nUlYco+YY1c54qlzeCwx/EFT5vCNeM/QpFM2CBZzxE78Kzk+8yup5lJFX5AkpvaPzErN0P0iIXOaWAMPh10N8A==",
+              "csrf-param": "authenticity_token",
+              "twitter:description": "机器之心",
+              "twitter:image": "https://cdn.jiqizhixin.com/assets/global/logo-ec761a87e9b6e17f8a2cb653be0f9a8d252b9cd7ac31a0064f81b433732da019.png",
+              "title": "机器之心",
+              "keywords": "全球人工智能, 人工智能信息服务, 人工智能优质文章, 人工智能媒体, 人工智能产业服务, ai00, ai talk, interface, ai live, 机器智能, 机器学习, 深度学习, 神经网络, 强化学习, 计算机视觉, 自然语言处理, 机器人",
+              "color-scheme": "light only",
+              "ogUrl": "https://www.jiqizhixin.com/",
+              "scrapeId": "019cea08-e22b-70e8-8c79-e1977895ad10",
+              "sourceURL": "https://www.jiqizhixin.com/",
+              "url": "https://www.jiqizhixin.com/",
+              "statusCode": 200,
+              "contentType": "text/html; charset=utf-8",
+              "proxyUsed": "basic",
+              "creditsUsed": 1,
+              "concurrencyLimited": false
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Code in JavaScript": [
+      {
+        "json": {
+          "title": "刚刚，腾讯电脑“龙虾管家”重磅上线",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/737a2f2d-cc73-402f-b481-0c66cdf6dc96"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "OpenClaw「App」榜单，国产Skill下载量冲上第一：能给龙虾接入现实世界",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/c318d768-a48e-45df-97eb-2ece204af30f",
+          "tags": [
+            "Skill",
+            "百度",
+            "Openclaw"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/f9d444cb-56b5-44e3-9843-73f3c83d6ade",
+          "tags": [
+            "StreamDiffusionV2",
+            "MLSys 2026"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "阿里云发布手机“一键养虾”产品JVS Claw：3分钟实现养虾自由",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e",
+          "tags": [
+            "Openclaw",
+            "阿里云"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e",
+          "tags": [
+            "CLI",
+            "API",
+            "MCP",
+            "Perplexity"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "AI编程助手竟成「内鬼」？SKILLJECT：当「技能包」变成「特洛伊木马」",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/2e726d68-5c13-4797-9ac5-1321b7798a0e",
+          "tags": [
+            "自动化攻击框架",
+            "SKILLJECT"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "王兴兴、郭彦东、彭志辉、王鹤入选福布斯中国科创人物榜单，中国具身智能“核心版图”正式确立",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/cf12b88f-08a1-4053-a48d-101a84f40b21"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "3亿美元巨额融资，AI视频新独角兽爱诗科技，正在抢跑「实时世界模型」",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/63a92219-3451-4e57-a9e9-de15afce9dc5",
+          "tags": [
+            "视频生成",
+            "世界模型",
+            "爱诗科技"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "这年头学不会数理化，只能怪自己懒，谷歌NotebookLM上新，秒出科普视频",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/98be0a19-50b6-4bc2-813e-a3f58c885197",
+          "tags": [
+            "NotebookLM",
+            "谷歌"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "有效思考激发多模态智能体决策潜力！清华&北大&腾讯联合提出GTR训练新框架",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/d3da5ca5-9c73-46e2-9e3d-70565ee25d9c",
+          "tags": [
+            "Guided Thought Reinforcement",
+            "思维崩塌"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "让AI学会解释自己：MIT教会模型从内心提取概念，实现更准、更透明的决策",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/8c6ab3a2-db69-4ec5-a39a-7d866e99c0fb",
+          "tags": [
+            "AI for Science"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "杜少雷、安波、杨凯峪，三位世界级 AI 科学家加入MiroMind",
+          "publishTime": "03月13日",
+          "link": "https://www.jiqizhixin.com/articles/85502f4b-74d0-49f9-ada6-88309bbf7b62",
+          "tags": [
+            "陈天桥",
+            "MiroMind"
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Merge": [
+      {
+        "json": {
+          "title": "刚刚，腾讯电脑“龙虾管家”重磅上线",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/737a2f2d-cc73-402f-b481-0c66cdf6dc96",
+          "tags": [],
+          "tagText": ""
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "OpenClaw「App」榜单，国产Skill下载量冲上第一：能给龙虾接入现实世界",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/c318d768-a48e-45df-97eb-2ece204af30f",
+          "tags": [
+            "Skill",
+            "百度",
+            "Openclaw"
+          ],
+          "tagText": "Skill, 百度, Openclaw"
+        },
+        "pairedItem": {
+          "item": 1
+        }
+      },
+      {
+        "json": {
+          "title": "MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/f9d444cb-56b5-44e3-9843-73f3c83d6ade",
+          "tags": [
+            "StreamDiffusionV2",
+            "MLSys 2026"
+          ],
+          "tagText": "StreamDiffusionV2, MLSys 2026"
+        },
+        "pairedItem": {
+          "item": 2
+        }
+      },
+      {
+        "json": {
+          "title": "阿里云发布手机“一键养虾”产品JVS Claw：3分钟实现养虾自由",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e",
+          "tags": [
+            "Openclaw",
+            "阿里云"
+          ],
+          "tagText": "Openclaw, 阿里云"
+        },
+        "pairedItem": {
+          "item": 3
+        }
+      },
+      {
+        "json": {
+          "title": "MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e",
+          "tags": [
+            "CLI",
+            "API",
+            "MCP",
+            "Perplexity"
+          ],
+          "tagText": "CLI, API, MCP, Perplexity"
+        },
+        "pairedItem": {
+          "item": 4
+        }
+      },
+      {
+        "json": {
+          "title": "AI编程助手竟成「内鬼」？SKILLJECT：当「技能包」变成「特洛伊木马」",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/2e726d68-5c13-4797-9ac5-1321b7798a0e",
+          "tags": [
+            "自动化攻击框架",
+            "SKILLJECT"
+          ],
+          "tagText": "自动化攻击框架, SKILLJECT"
+        },
+        "pairedItem": {
+          "item": 5
+        }
+      },
+      {
+        "json": {
+          "title": "王兴兴、郭彦东、彭志辉、王鹤入选福布斯中国科创人物榜单，中国具身智能“核心版图”正式确立",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/cf12b88f-08a1-4053-a48d-101a84f40b21",
+          "tags": [],
+          "tagText": ""
+        },
+        "pairedItem": {
+          "item": 6
+        }
+      },
+      {
+        "json": {
+          "title": "3亿美元巨额融资，AI视频新独角兽爱诗科技，正在抢跑「实时世界模型」",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/63a92219-3451-4e57-a9e9-de15afce9dc5",
+          "tags": [
+            "视频生成",
+            "世界模型",
+            "爱诗科技"
+          ],
+          "tagText": "视频生成, 世界模型, 爱诗科技"
+        },
+        "pairedItem": {
+          "item": 7
+        }
+      },
+      {
+        "json": {
+          "title": "这年头学不会数理化，只能怪自己懒，谷歌NotebookLM上新，秒出科普视频",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/98be0a19-50b6-4bc2-813e-a3f58c885197",
+          "tags": [
+            "NotebookLM",
+            "谷歌"
+          ],
+          "tagText": "NotebookLM, 谷歌"
+        },
+        "pairedItem": {
+          "item": 8
+        }
+      },
+      {
+        "json": {
+          "title": "有效思考激发多模态智能体决策潜力！清华&北大&腾讯联合提出GTR训练新框架",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/d3da5ca5-9c73-46e2-9e3d-70565ee25d9c",
+          "tags": [
+            "Guided Thought Reinforcement",
+            "思维崩塌"
+          ],
+          "tagText": "Guided Thought Reinforcement, 思维崩塌"
+        },
+        "pairedItem": {
+          "item": 9
+        }
+      },
+      {
+        "json": {
+          "title": "让AI学会解释自己：MIT教会模型从内心提取概念，实现更准、更透明的决策",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/8c6ab3a2-db69-4ec5-a39a-7d866e99c0fb",
+          "tags": [
+            "AI for Science"
+          ],
+          "tagText": "AI for Science"
+        },
+        "pairedItem": {
+          "item": 10
+        }
+      },
+      {
+        "json": {
+          "title": "杜少雷、安波、杨凯峪，三位世界级 AI 科学家加入MiroMind",
+          "publishTime": "2026-03-13T00:00:00.000Z",
+          "link": "https://www.jiqizhixin.com/articles/85502f4b-74d0-49f9-ada6-88309bbf7b62",
+          "tags": [
+            "陈天桥",
+            "MiroMind"
+          ],
+          "tagText": "陈天桥, MiroMind"
+        },
+        "pairedItem": {
+          "item": 11
+        }
+      }
+    ]
+  },
+  "connections": {
+    "本地爬虫接口": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "本地爬虫接口",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notion1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "网页获取",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "网页获取": {
+      "main": [
+        [
+          {
+            "node": "将Markdown文本转换为纯文本",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "将Markdown文本转换为纯文本": {
+      "main": [
+        [
+          {
+            "node": "Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "04af3756-8220-4074-b613-7dd23fd5488b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9f42aebc7bae1e15453ada7a9513ca46b68e3c2d6ce65a8169bd134cbf905c35"
+  },
+  "id": "VzUzYPWVKxDoZlzs",
+  "tags": []
+}
