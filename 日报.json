@@ -1,0 +1,1710 @@
+{
+  "name": "日报",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "32273411-6a15-8063-86d0-c9858d725855",
+          "mode": "list",
+          "cachedResultName": "AI文章收集",
+          "cachedResultUrl": "https://www.notion.so/322734116a15806386d0c9858d725855"
+        },
+        "limit": 10,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4560,
+        368
+      ],
+      "id": "cff507ed-6d63-474a-8f01-2814a1456616",
+      "name": "Notion",
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 创建一个空字符串用于存储合并后的文本\nlet mergedText = '';\n\n// 提取JSON数组中的特定字段并按格式输出\nconst jsonData = $input.all();\n\n/**\n * 提取JSON数组中的特定字段并按格式输出\n * @param {Array} data - 包含文章信息的JSON数组\n * @returns {string} - 合并后的文本字符串\n */\nfunction extractFields(data) {\n  if (!Array.isArray(data) || data.length === 0) {\n    return '';\n  }\n\n  return data.map(item => {\n    const title = item.json.name || '';\n    const summary = item.json.property_ai || '';\n    const url = item.json.property_url || '';\n    return `标题：${title}\\n摘要：${summary}\\n链接：${url}\\n\\n`;\n  }).join('');\n}\n\n// 执行函数并将结果赋值给mergedText\nmergedText = extractFields(jsonData);\nreturn {\n    mergedText: mergedText.trim() // 去除最后的多余换行\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4336,
+        368
+      ],
+      "id": "245ece9a-70c1-4b1e-b969-ca9c8632935e",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=待筛选的文章列表：\n{{ $json.mergedText }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "请将你的评价能力调整为专业AI领域评估者。我需要你帮我挑选出高质量的AI领域的文章。我对以下三类文章有特别关注：\n1、描述AI领域重大发展和趋势的文章，可以是研究论文、行业报告、深度分析或会议论文。关键词包括但不限于：AI趋势、AI研究、深度学习、机器学习、自然语言处理、AI伦理等。\n2、报道AI领域新产品发布的新闻或文章，尤其是那些具有巨大影响力的产品。关键词包括但不限于：AI产品发布、AI新技术、AI新应用、AI创新、AI工具等。\n3、发表AI领域工具、模型的评测分析和专业观点的内容。关键词包括但不限于：OpenAI、Claude、Deepseek、qwen、NVIDIA、字节跳动、MCP、RL、推理模型等。\n\n## Constrains:\n1、 筛选结果最少不低于5篇文章内容\n\n## Workflows:\n1、评估文章与AI领域的相关性：对提供的所有文章（包含标题和摘要）进行分析，筛选出真正与AI技术、产品、趋势相关的高质量内容。\n2、去重处理：如遇到多篇报道同一事件/主题的文章，仅保留摘要更完整的一篇。\n3、生成聚合标题：基于筛选后的文章，生成一个包含核心信息的组合标题，格式为\"公司/产品+关键动作/事件\"，多个新闻间用分号分隔，标题字数不超过60个汉字（示例：\"00后用DeepSeek直播1天卖出3.3亿元；特斯拉暴跌超15%；海尔集团否认强制员工双休\"）。\n4、输出筛选完的内容。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -4128,
+        368
+      ],
+      "id": "7c82ea67-d746-477f-9c0b-9e06381c1ffa",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -4128,
+        592
+      ],
+      "id": "cc5a5612-2243-4bac-b39c-7eae17131d7e",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "uudmqmw4VbVmaxCa",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"bigtitle\": \"大标题\",\n  \"articles\": [\n    {\n      \"title\": \"1、标题一\",\n      \"summary\": \"摘要\",\n      \"url\": \"链接\",\n      \"reason\": \"选择的理由\"\n    },\n    {\n      \"title\": \"2、标题二\",\n      \"summary\": \"摘要\",\n      \"url\": \"链接\",\n      \"reason\": \"选择的理由\"\n    }\n  ]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -3936,
+        592
+      ],
+      "id": "f9d8728a-b81a-4a75-b4a4-f0f4727b40c5",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "32373411-6a15-80bc-8161-c3b0424c4837",
+          "mode": "list",
+          "cachedResultName": "AI日报",
+          "cachedResultUrl": "https://www.notion.so/323734116a1580bc8161c3b0424c4837"
+        },
+        "title": "={{$now.format('AI资讯-'+'MM月dd日')}}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Type|select",
+              "selectValue": "Post"
+            },
+            {
+              "key": "Category|select",
+              "selectValue": "AI日报"
+            },
+            {
+              "key": "Status|select",
+              "selectValue": "Published"
+            },
+            {
+              "key": "date|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4784,
+        368
+      ],
+      "id": "07a58886-a13f-4cb9-8a77-ffb61ca81642",
+      "name": "Notion1",
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -5056,
+        1408
+      ],
+      "id": "3ac559c1-26e1-4029-9162-88441fd24e91",
+      "name": "Loop Over Items",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": {
+          "__rl": true,
+          "value": "={{ $('Notion1').item.json.url }}",
+          "mode": "url"
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "type": "heading_3",
+              "textContent": "={{ $json.title }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4848,
+        1424
+      ],
+      "id": "9eedb983-dc76-48fb-92a8-ebd3d0f97e33",
+      "name": "标题",
+      "executeOnce": true,
+      "retryOnFail": false,
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": {
+          "__rl": true,
+          "value": "= {{ $('Notion1').first().json.url }}",
+          "mode": "url"
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "={{ $('Loop Over Items').item.json.summary }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4624,
+        1424
+      ],
+      "id": "3f868b12-a696-4b16-a1ac-3b8f3cb308aa",
+      "name": "段落",
+      "executeOnce": true,
+      "retryOnFail": false,
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": {
+          "__rl": true,
+          "value": "= {{ $('Notion1').first().json.url }}",
+          "mode": "url"
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "richText": true,
+              "text": {
+                "text": [
+                  {
+                    "text": "🔗访问原文",
+                    "isLink": true,
+                    "textLink": "={{ $('Loop Over Items').item.json.url }}",
+                    "annotationUi": {
+                      "color": "blue"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4400,
+        1424
+      ],
+      "id": "682e5c8c-dc4f-4b98-83f6-10fd3d7a7e50",
+      "name": "url",
+      "executeOnce": true,
+      "retryOnFail": false,
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.articles",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -3744,
+        368
+      ],
+      "id": "03c8235d-210f-4094-97f8-c2e3d4a96384",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": {
+          "__rl": true,
+          "value": "= {{ $('Notion1').first().json.url }}",
+          "mode": "url"
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "     "
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4160,
+        1424
+      ],
+      "id": "d56a89dc-8532-44ff-a3c7-a18c8bdb44ae",
+      "name": "分隔",
+      "executeOnce": true,
+      "retryOnFail": false,
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "= {{ $('Notion1').first().json.url }}",
+          "mode": "url"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "title|title",
+              "title": "={{ $('AI Agent').first().json.output.bigtitle }}{{$now.format(' | '+'MM月dd日'+ 'AI资讯')}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4848,
+        1200
+      ],
+      "id": "56d686c2-ecd9-445d-850a-ae8b57c59221",
+      "name": "Notion2",
+      "executeOnce": true,
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "action": "generate",
+        "dataPropertyName": "UUID"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -4832,
+        880
+      ],
+      "id": "f50ca09f-1678-4e4c-a1b7-775a5462d1de",
+      "name": "Crypto"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openspeech.bytedance.com/api/v1/tts_async/submit",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Resource-Id",
+              "value": "volc.tts_async.default"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer; HxKGIjDevIgSlS5aaLFGyghKogNA7Guv"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"appid\": \"1436240118\",\n    \"reqid\": \"{{ $json.UUID }}\",\n    \"text\": {{ JSON.stringify($('AI Agent').first().json.output.bigtitle + $now.format(' | MM月dd日 AI资讯; ') + $('Code1').item.json.mergedText) }},\n    \"format\": \"mp3\",\n    \"voice_type\": \"BV002_streaming\",\n    \"sample_rate\": 24000,\n    \"volume\": 1,\n    \"speed\": 1,\n    \"pitch\": 1,\n    \"enable_subtitle\": 0\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4624,
+        880
+      ],
+      "id": "46ba8f5f-7cbe-417c-81c6-7e26662f321f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 创建一个空字符串用于存储合并后的文本\nlet mergedText = '';\n\n// 提取JSON数组中的特定字段并按格式输出\nconst jsonData = $input.all();\n\n/**\n * 提取JSON数组中的特定字段并按格式输出\n * @param {Array} data - 包含文章信息的JSON数组\n * @returns {string} - 合并后的文本字符串\n */\nfunction extractFields(data) {\n  if (!Array.isArray(data) || data.length === 0) {\n    return '';\n  }\n\n  return data.map(item => {\n    const title = item.json.title || '';\n    const summary = item.json.summary || '';\n    return `${title} 摘要：${summary}  `;\n  }).join('');\n}\n\n// 执行函数并将结果赋值给mergedText\nmergedText = extractFields(jsonData);\nreturn {\n    mergedText: mergedText.trim() // 去除最后的多余换行\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5056,
+        880
+      ],
+      "id": "45927603-2162-4ea5-8911-8cac08d4aeae",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "url": "https://openspeech.bytedance.com/api/v1/tts_async/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "appid",
+              "value": "1436240118"
+            },
+            {
+              "name": "task_id",
+              "value": "={{ $('HTTP Request').item.json.task_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Resource-Id",
+              "value": "volc.tts_async.default"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer;HxKGIjDevIgSlS5aaLFGyghKogNA7Guv"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4176,
+        864
+      ],
+      "id": "91805003-c55c-49fb-8b3f-d334b77335dd",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -4400,
+        880
+      ],
+      "id": "ccedf843-ee74-4595-911f-237d67ca4f3c",
+      "name": "Wait",
+      "webhookId": "660ad7b5-9540-4812-986c-740a999a7efe",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.audio_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3952,
+        864
+      ],
+      "id": "8e9c0d32-8af6-4a68-87d4-8c1200e4c31d",
+      "name": "下载音频"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "useDataOfInput": 2
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -3312,
+        864
+      ],
+      "id": "23107e48-3e1c-40ea-9f4c-8f68ba358ec1",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 21,
+              "triggerAtMinute": 20
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -5008,
+        368
+      ],
+      "id": "596f3dd6-6761-48ba-afe8-d20b9374d70d",
+      "name": "Schedule Trigger",
+      "notesInFlow": true,
+      "notes": "每完9:10执行"
+    },
+    {
+      "parameters": {
+        "operation": "crop",
+        "width": 800,
+        "height": 5000,
+        "positionX": 560,
+        "positionY": 40,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        -4400,
+        1200
+      ],
+      "id": "627a26ba-aacc-4bec-be0f-adfcad3d89b9",
+      "name": "Edit Image1"
+    },
+    {
+      "parameters": {
+        "url": "https://api.screenshotone.com/take",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_key",
+              "value": "L6evKi9L_kD_yQ"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "format",
+              "value": "jpg"
+            },
+            {
+              "name": "dark_mode",
+              "value": "true"
+            },
+            {
+              "name": "full_page",
+              "value": "true"
+            },
+            {
+              "name": "selector",
+              "value": ".notion-frame"
+            },
+            {
+              "name": "image_quality",
+              "value": "100"
+            },
+            {
+              "name": "response_type",
+              "value": "by_format"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4624,
+        1200
+      ],
+      "id": "5af5aeb7-bf1e-49f8-8ece-a982941eadbc",
+      "name": "HTTP Request5"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "32373411-6a15-804a-8583-e24e396237e2",
+          "mode": "list",
+          "cachedResultName": "n8n音频",
+          "cachedResultUrl": "https://www.notion.so/323734116a15804a8583e24e396237e2"
+        },
+        "title": "={{ $json.task_id }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "文件和媒体|files",
+              "fileUrls": {
+                "fileUrl": [
+                  {
+                    "name": "data",
+                    "url": "={{ $json.audio_url }}"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -3728,
+        720
+      ],
+      "id": "c8bdcd01-2c8f-4b86-accd-86308773335e",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 直接去拿 Loop 节点最开始输入的原始数据\nconst originalData = $('Loop Over Items').all(); \n\n// 直接去拿 Notion 节点产生的所有结果\nconst notionResults = $('分隔').all();\n\n// 手动合并它们\nreturn originalData.map((item, index) => {\n  return {\n    json: {\n      ...item.json,\n      notion_info: notionResults[index]?.json || {}\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3904,
+        1424
+      ],
+      "id": "0580e2a6-72ba-4f56-9abf-30e94d2475d0",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "32373411-6a15-804a-8583-e24e396237e2",
+          "mode": "list",
+          "cachedResultName": "n8n音频",
+          "cachedResultUrl": "https://www.notion.so/323734116a15804a8583e24e396237e2"
+        },
+        "title": "={{ $json.name }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "文件和媒体|files",
+              "fileUrls": {
+                "fileUrl": [
+                  {
+                    "name": "=截图",
+                    "url": "="
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -4160,
+        1200
+      ],
+      "id": "e5d96e5d-0756-435a-8094-31bb19de26ee",
+      "name": "Create a database page1",
+      "executeOnce": true,
+      "credentials": {
+        "notionApi": {
+          "id": "UOg5FE5jeGl0gsC6",
+          "name": "Notion account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Notion": [
+      {
+        "json": {
+          "id": "32373411-6a15-8110-a9ee-f254ed9a694e",
+          "name": "阿里云发布手机“一键养虾”产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心",
+          "url": "https://www.notion.so/JVS-Claw-3-323734116a158110a9eef254ed9a694e",
+          "property_url": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e",
+          "property_tag": "Openclaw, 阿里云",
+          "property_": "阿里云发布手机“一键养虾”产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "id": "32373411-6a15-8129-a918-cfe097522a2e",
+          "name": "刚刚，腾讯电脑“龙虾管家”重磅上线 ｜ 机器之心",
+          "url": "https://www.notion.so/323734116a158129a918cfe097522a2e",
+          "property_url": "https://www.jiqizhixin.com/articles/737a2f2d-cc73-402f-b481-0c66cdf6dc96",
+          "property_tag": "",
+          "property_": "刚刚，腾讯电脑“龙虾管家”重磅上线 ｜ 机器之心"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "id": "32373411-6a15-8137-af4a-c0975ae5e96b",
+          "name": "OpenClaw「App」榜单，国产Skill下载量冲上第一：能给龙虾接入现实世界 ｜ 机器之心",
+          "url": "https://www.notion.so/OpenClaw-App-Skill-323734116a158137af4ac0975ae5e96b",
+          "property_url": "https://www.jiqizhixin.com/articles/c318d768-a48e-45df-97eb-2ece204af30f",
+          "property_tag": "Skill, 百度, Openclaw",
+          "property_": "OpenClaw「App」榜单，国产Skill下载量冲上第一：能给龙虾接入现实世界 ｜ 机器之心"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "id": "32373411-6a15-8172-a3f0-ed9bff1bd21d",
+          "name": "MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心",
+          "url": "https://www.notion.so/MLSys-2026-StreamDiffusionV2-323734116a158172a3f0ed9bff1bd21d",
+          "property_url": "https://www.jiqizhixin.com/articles/f9d444cb-56b5-44e3-9843-73f3c83d6ade",
+          "property_tag": "StreamDiffusionV2, MLSys 2026",
+          "property_": "MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "id": "32373411-6a15-81c0-97ee-f480875aa22d",
+          "name": "MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心",
+          "url": "https://www.notion.so/MCP-CLI-Perplexity-MCP-323734116a1581c097eef480875aa22d",
+          "property_url": "https://www.jiqizhixin.com/articles/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e",
+          "property_tag": "CLI, API, MCP, Perplexity",
+          "property_": "MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Code": [
+      {
+        "json": {
+          "mergedText": "标题：阿里云发布手机“一键养虾”产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心\n摘要：\n链接：https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e\n\n标题：刚刚，腾讯电脑“龙虾管家”重磅上线 ｜ 机器之心\n摘要：\n链接：https://www.jiqizhixin.com/articles/737a2f2d-cc73-402f-b481-0c66cdf6dc96\n\n标题：OpenClaw「App」榜单，国产Skill下载量冲上第一：能给龙虾接入现实世界 ｜ 机器之心\n摘要：\n链接：https://www.jiqizhixin.com/articles/c318d768-a48e-45df-97eb-2ece204af30f\n\n标题：MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心\n摘要：\n链接：https://www.jiqizhixin.com/articles/f9d444cb-56b5-44e3-9843-73f3c83d6ade\n\n标题：MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心\n摘要：\n链接：https://www.jiqizhixin.com/articles/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "AI Agent": [
+      {
+        "json": {
+          "output": {
+            "bigtitle": "阿里云发布JVS Claw养虾AI产品；腾讯上线龙虾管家AI应用；StreamDiffusionV2实现实时视频生成；Perplexity放弃MCP转向CLI",
+            "articles": [
+              {
+                "title": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心",
+                "summary": "阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用",
+                "url": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e",
+                "reason": "属于AI新应用类别，展示了AI技术在传统养殖行业的创新应用，具有实际应用价值"
+              },
+              {
+                "title": "腾讯电脑\"龙虾管家\"重磅上线 ｜ 机器之心",
+                "summary": "腾讯推出AI驱动的龙虾养殖管理系统，为养殖业提供智能化解决方案",
+                "url": "https://www.jiqizhixin.com/articles/737a2f2d-cc73-402f-b481-0c66cdf6dc96",
+                "reason": "属于AI产品发布类别，展示了大型科技公司如何将AI技术应用于传统行业"
+              },
+              {
+                "title": "MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心",
+                "summary": "MLSys 2026会议上提出的StreamDiffusionV2技术，实现了视频生成从离线到实时交互的突破，为生成式直播系统提供了技术基础",
+                "url": "https://www.jiqizhixin.com/articles/f9d444cb-56b5-44e3-9843-73f3c83d6ade",
+                "reason": "属于AI研究和发展趋势类别，涉及重要的视频生成技术突破，具有学术和产业双重价值"
+              },
+              {
+                "title": "MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心",
+                "summary": "Perplexity宣布放弃使用MCP框架，转向CLI工具，反映了AI工具生态的演变和行业趋势变化",
+                "url": "https://www.jiqizhixin.com/articles/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e",
+                "reason": "属于AI工具评测和专业观点类别，涉及AI开发工具和框架的重要变化，反映了行业技术趋势"
+              }
+            ]
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Split Out": [
+      {
+        "json": {
+          "title": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心",
+          "summary": "阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用",
+          "url": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e",
+          "reason": "属于AI新应用类别，展示了AI技术在传统养殖行业的创新应用，具有实际应用价值"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "腾讯电脑\"龙虾管家\"重磅上线 ｜ 机器之心",
+          "summary": "腾讯推出AI驱动的龙虾养殖管理系统，为养殖业提供智能化解决方案",
+          "url": "https://www.jiqizhixin.com/articles/737a2f2d-cc73-402f-b481-0c66cdf6dc96",
+          "reason": "属于AI产品发布类别，展示了大型科技公司如何将AI技术应用于传统行业"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心",
+          "summary": "MLSys 2026会议上提出的StreamDiffusionV2技术，实现了视频生成从离线到实时交互的突破，为生成式直播系统提供了技术基础",
+          "url": "https://www.jiqizhixin.com/articles/f9d444cb-56b5-44e3-9843-73f3c83d6ade",
+          "reason": "属于AI研究和发展趋势类别，涉及重要的视频生成技术突破，具有学术和产业双重价值"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "title": "MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心",
+          "summary": "Perplexity宣布放弃使用MCP框架，转向CLI工具，反映了AI工具生态的演变和行业趋势变化",
+          "url": "https://www.jiqizhixin.com/articles/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e",
+          "reason": "属于AI工具评测和专业观点类别，涉及AI开发工具和框架的重要变化，反映了行业技术趋势"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Code1": [
+      {
+        "json": {
+          "mergedText": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心 摘要：阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用  腾讯电脑\"龙虾管家\"重磅上线 ｜ 机器之心 摘要：腾讯推出AI驱动的龙虾养殖管理系统，为养殖业提供智能化解决方案  MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心 摘要：MLSys 2026会议上提出的StreamDiffusionV2技术，实现了视频生成从离线到实时交互的突破，为生成式直播系统提供了技术基础  MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心 摘要：Perplexity宣布放弃使用MCP框架，转向CLI工具，反映了AI工具生态的演变和行业趋势变化"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "HTTP Request": [
+      {
+        "json": {
+          "task_id": "3102f271-107a-4ab0-86dc-cadfd69fd5dd",
+          "task_status": 0,
+          "text_length": 499
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "下载音频": [
+      {
+        "json": {
+          "audio_url": "https://lf9-lab-speech-tt-sign.bytespeech.com/tos-cn-o-14155/ospsZeEAE7bFnEhCC5bNfafJACDdBEAAyAFT61?x-expires=1773475529&x-signature=hy105YCM5s1A31dyZm43kUOMjJg%3D",
+          "task_id": "3102f271-107a-4ab0-86dc-cadfd69fd5dd",
+          "task_status": 1,
+          "text_length": 499,
+          "url_expire_time": 1773475529
+        },
+        "binary": {
+          "data": {
+            "mimeType": "audio/mpeg",
+            "fileType": "audio",
+            "fileExtension": "mpga",
+            "data": "filesystem-v2",
+            "directory": "https://lf9-lab-speech-tt-sign.bytespeech.com/tos-cn-o-14155/ospsZeEAE7bFnEhCC5bNfafJACDdBEAAyAFT61?x-expires=1773475529&x-signature=hy105YCM5s1A31dyZm43kUOMjJg%3D",
+            "fileName": "ospsZeEAE7bFnEhCC5bNfafJACDdBEAAyAFT61",
+            "id": "filesystem-v2:workflows/qpfabrD2vao3hJaV/executions/254/binary_data/48b0cd31-1c2e-4756-b5e0-714f147df11c",
+            "fileSize": "1.59 MB",
+            "bytes": 1585965
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "HTTP Request2": [
+      {
+        "json": {
+          "audio_url": "https://lf9-lab-speech-tt-sign.bytespeech.com/tos-cn-o-14155/ospsZeEAE7bFnEhCC5bNfafJACDdBEAAyAFT61?x-expires=1773475529&x-signature=hy105YCM5s1A31dyZm43kUOMjJg%3D",
+          "task_id": "3102f271-107a-4ab0-86dc-cadfd69fd5dd",
+          "task_status": 1,
+          "text_length": 499,
+          "url_expire_time": 1773475529
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Create a database page": [
+      {
+        "json": {
+          "id": "32373411-6a15-811a-8434-e6403abce96b",
+          "name": "3102f271-107a-4ab0-86dc-cadfd69fd5dd",
+          "url": "https://www.notion.so/3102f271-107a-4ab0-86dc-cadfd69fd5dd-323734116a15811a8434e6403abce96b",
+          "property_": [
+            "https://lf9-lab-speech-tt-sign.bytespeech.com/tos-cn-o-14155/ospsZeEAE7bFnEhCC5bNfafJACDdBEAAyAFT61?x-expires=1773475529&x-signature=hy105YCM5s1A31dyZm43kUOMjJg%3D"
+          ],
+          "property_audio": "3102f271-107a-4ab0-86dc-cadfd69fd5dd"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Merge": [
+      {
+        "json": {
+          "title": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心",
+          "summary": "阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用",
+          "url": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e",
+          "reason": "属于AI新应用类别，展示了AI技术在传统养殖行业的创新应用，具有实际应用价值"
+        },
+        "pairedItem": {
+          "item": 0,
+          "input": 1
+        }
+      },
+      {
+        "json": {
+          "title": "腾讯电脑\"龙虾管家\"重磅上线 ｜ 机器之心",
+          "summary": "腾讯推出AI驱动的龙虾养殖管理系统，为养殖业提供智能化解决方案",
+          "url": "https://www.jiqizhixin.com/articles/737a2f2d-cc73-402f-b481-0c66cdf6dc96",
+          "reason": "属于AI产品发布类别，展示了大型科技公司如何将AI技术应用于传统行业"
+        },
+        "pairedItem": {
+          "item": 1,
+          "input": 1
+        }
+      },
+      {
+        "json": {
+          "title": "MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心",
+          "summary": "MLSys 2026会议上提出的StreamDiffusionV2技术，实现了视频生成从离线到实时交互的突破，为生成式直播系统提供了技术基础",
+          "url": "https://www.jiqizhixin.com/articles/f9d444cb-56b5-44e3-9843-73f3c83d6ade",
+          "reason": "属于AI研究和发展趋势类别，涉及重要的视频生成技术突破，具有学术和产业双重价值"
+        },
+        "pairedItem": {
+          "item": 2,
+          "input": 1
+        }
+      },
+      {
+        "json": {
+          "title": "MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心",
+          "summary": "Perplexity宣布放弃使用MCP框架，转向CLI工具，反映了AI工具生态的演变和行业趋势变化",
+          "url": "https://www.jiqizhixin.com/articles/6da5c073-ba3d-4d41-8b5e-cc2ce237b05e",
+          "reason": "属于AI工具评测和专业观点类别，涉及AI开发工具和框架的重要变化，反映了行业技术趋势"
+        },
+        "pairedItem": {
+          "item": 3,
+          "input": 1
+        }
+      }
+    ],
+    "Notion1": [
+      {
+        "json": {
+          "id": "32373411-6a15-818d-82bb-f7dbaae7da89",
+          "name": "AI资讯-03月14日",
+          "url": "https://www.notion.so/AI-03-14-323734116a15818d82bbf7dbaae7da89",
+          "property_summary": "",
+          "property_category": "AI日报",
+          "property_date": null,
+          "property_type": "Post",
+          "property_status": "Published",
+          "property_title": "AI资讯-03月14日"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Crypto": [
+      {
+        "json": {
+          "mergedText": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心 摘要：阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用  腾讯电脑\"龙虾管家\"重磅上线 ｜ 机器之心 摘要：腾讯推出AI驱动的龙虾养殖管理系统，为养殖业提供智能化解决方案  MLSys 2026 | StreamDiffusionV2: 将视频生成从「离线生成」带入「实时交互」，实现真正可用的生成式直播系统 ｜ 机器之心 摘要：MLSys 2026会议上提出的StreamDiffusionV2技术，实现了视频生成从离线到实时交互的突破，为生成式直播系统提供了技术基础  MCP已死，CLI当立！Perplexity首先放弃使用MCP，全网赞成 ｜ 机器之心 摘要：Perplexity宣布放弃使用MCP框架，转向CLI工具，反映了AI工具生态的演变和行业趋势变化",
+          "UUID": "8a502e1e-ebfa-41d7-989d-b6a83c4f9624"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "标题": [
+      {
+        "json": {
+          "object": "list",
+          "results": [
+            {
+              "object": "block",
+              "id": "32373411-6a15-817c-b21e-fae1127bb99d",
+              "parent": {
+                "type": "page_id",
+                "page_id": "32373411-6a15-818d-82bb-f7dbaae7da89"
+              },
+              "created_time": "2026-03-14T08:15:00.000Z",
+              "last_edited_time": "2026-03-14T08:15:00.000Z",
+              "created_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "last_edited_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "has_children": false,
+              "in_trash": false,
+              "type": "heading_3",
+              "heading_3": {
+                "is_toggleable": false,
+                "color": "default",
+                "text": [
+                  {
+                    "type": "text",
+                    "text": {
+                      "content": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心",
+                      "link": null
+                    },
+                    "annotations": {
+                      "bold": false,
+                      "italic": false,
+                      "strikethrough": false,
+                      "underline": false,
+                      "code": false,
+                      "color": "default"
+                    },
+                    "plain_text": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心",
+                    "href": null
+                  }
+                ]
+              },
+              "archived": false
+            }
+          ],
+          "next_cursor": null,
+          "has_more": false,
+          "request_id": "ec117037-6fc6-47f5-a29c-c3116a50837d"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "段落": [
+      {
+        "json": {
+          "object": "list",
+          "results": [
+            {
+              "object": "block",
+              "id": "32373411-6a15-812a-808c-c0b2ead379da",
+              "parent": {
+                "type": "page_id",
+                "page_id": "32373411-6a15-818d-82bb-f7dbaae7da89"
+              },
+              "created_time": "2026-03-14T08:16:00.000Z",
+              "last_edited_time": "2026-03-14T08:16:00.000Z",
+              "created_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "last_edited_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "has_children": false,
+              "in_trash": false,
+              "type": "paragraph",
+              "paragraph": {
+                "color": "default",
+                "text": [
+                  {
+                    "type": "text",
+                    "text": {
+                      "content": "阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用",
+                      "link": null
+                    },
+                    "annotations": {
+                      "bold": false,
+                      "italic": false,
+                      "strikethrough": false,
+                      "underline": false,
+                      "code": false,
+                      "color": "default"
+                    },
+                    "plain_text": "阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用",
+                    "href": null
+                  }
+                ]
+              },
+              "archived": false
+            }
+          ],
+          "next_cursor": null,
+          "has_more": false,
+          "request_id": "40221003-7fd6-4091-a172-7d359a7cb0e6"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "url": [
+      {
+        "json": {
+          "object": "list",
+          "results": [
+            {
+              "object": "block",
+              "id": "32373411-6a15-8117-bb05-cc44d9688fa1",
+              "parent": {
+                "type": "page_id",
+                "page_id": "32373411-6a15-818d-82bb-f7dbaae7da89"
+              },
+              "created_time": "2026-03-14T08:16:00.000Z",
+              "last_edited_time": "2026-03-14T08:16:00.000Z",
+              "created_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "last_edited_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "has_children": false,
+              "in_trash": false,
+              "type": "paragraph",
+              "paragraph": {
+                "color": "default",
+                "text": [
+                  {
+                    "type": "text",
+                    "text": {
+                      "content": "🔗访问原文",
+                      "link": {
+                        "url": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e"
+                      }
+                    },
+                    "annotations": {
+                      "bold": false,
+                      "italic": false,
+                      "strikethrough": false,
+                      "underline": false,
+                      "code": false,
+                      "color": "blue"
+                    },
+                    "plain_text": "🔗访问原文",
+                    "href": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e"
+                  }
+                ]
+              },
+              "archived": false
+            }
+          ],
+          "next_cursor": null,
+          "has_more": false,
+          "request_id": "de70616f-8692-4005-8af3-7ea2e8ea8224"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "分隔": [
+      {
+        "json": {
+          "object": "list",
+          "results": [
+            {
+              "object": "block",
+              "id": "32373411-6a15-81db-bcfc-d7957a3e0f59",
+              "parent": {
+                "type": "page_id",
+                "page_id": "32373411-6a15-818d-82bb-f7dbaae7da89"
+              },
+              "created_time": "2026-03-14T08:16:00.000Z",
+              "last_edited_time": "2026-03-14T08:16:00.000Z",
+              "created_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "last_edited_by": {
+                "object": "user",
+                "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+              },
+              "has_children": false,
+              "in_trash": false,
+              "type": "paragraph",
+              "paragraph": {
+                "color": "default",
+                "text": [
+                  {
+                    "type": "text",
+                    "text": {
+                      "content": "     ",
+                      "link": null
+                    },
+                    "annotations": {
+                      "bold": false,
+                      "italic": false,
+                      "strikethrough": false,
+                      "underline": false,
+                      "code": false,
+                      "color": "default"
+                    },
+                    "plain_text": "     ",
+                    "href": null
+                  }
+                ]
+              },
+              "archived": false
+            }
+          ],
+          "next_cursor": null,
+          "has_more": false,
+          "request_id": "187f5000-af37-434f-9d17-ebe9dc233249"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Code in JavaScript": [
+      {
+        "json": {
+          "title": "阿里云发布手机\"一键养虾\"产品JVS Claw：3分钟实现养虾自由 ｜ 机器之心",
+          "summary": "阿里云发布基于AI技术的手机应用JVS Claw，号称3分钟实现养虾自由，展示了AI在农业养殖领域的创新应用",
+          "url": "https://www.jiqizhixin.com/articles/7ad1acff-c8dc-428a-a024-65467574508e",
+          "reason": "属于AI新应用类别，展示了AI技术在传统养殖行业的创新应用，具有实际应用价值",
+          "notion_info": {
+            "object": "list",
+            "results": [
+              {
+                "object": "block",
+                "id": "32373411-6a15-81db-bcfc-d7957a3e0f59",
+                "parent": {
+                  "type": "page_id",
+                  "page_id": "32373411-6a15-818d-82bb-f7dbaae7da89"
+                },
+                "created_time": "2026-03-14T08:16:00.000Z",
+                "last_edited_time": "2026-03-14T08:16:00.000Z",
+                "created_by": {
+                  "object": "user",
+                  "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+                },
+                "last_edited_by": {
+                  "object": "user",
+                  "id": "32273411-6a15-817c-a887-0027c9b25b8b"
+                },
+                "has_children": false,
+                "in_trash": false,
+                "type": "paragraph",
+                "paragraph": {
+                  "color": "default",
+                  "text": [
+                    {
+                      "type": "text",
+                      "text": {
+                        "content": "     ",
+                        "link": null
+                      },
+                      "annotations": {
+                        "bold": false,
+                        "italic": false,
+                        "strikethrough": false,
+                        "underline": false,
+                        "code": false,
+                        "color": "default"
+                      },
+                      "plain_text": "     ",
+                      "href": null
+                    }
+                  ]
+                },
+                "archived": false
+              }
+            ],
+            "next_cursor": null,
+            "has_more": false,
+            "request_id": "187f5000-af37-434f-9d17-ebe9dc233249"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Notion2": [
+      {
+        "json": {
+          "id": "32373411-6a15-818d-82bb-f7dbaae7da89",
+          "name": "阿里云发布JVS Claw养虾AI产品；腾讯上线龙虾管家AI应用；StreamDiffusionV2实现实时视频生成；Perplexity放弃MCP转向CLI | 03月14日AI资讯",
+          "url": "https://www.notion.so/JVS-Claw-AI-AI-StreamDiffusionV2-Perplexity-MCP-CLI-03-14-AI-323734116a15818d82bbf7dbaae7da89",
+          "property_summary": "",
+          "property_category": "AI日报",
+          "property_date": null,
+          "property_type": "Post",
+          "property_status": "Published",
+          "property_title": "阿里云发布JVS Claw养虾AI产品；腾讯上线龙虾管家AI应用；StreamDiffusionV2实现实时视频生成；Perplexity放弃MCP转向CLI | 03月14日AI资讯"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "HTTP Request5": [
+      {
+        "json": {
+          "id": "32373411-6a15-818d-82bb-f7dbaae7da89",
+          "name": "阿里云发布JVS Claw养虾AI产品；腾讯上线龙虾管家AI应用；StreamDiffusionV2实现实时视频生成；Perplexity放弃MCP转向CLI | 03月14日AI资讯",
+          "url": "https://www.notion.so/JVS-Claw-AI-AI-StreamDiffusionV2-Perplexity-MCP-CLI-03-14-AI-323734116a15818d82bbf7dbaae7da89",
+          "property_summary": "",
+          "property_category": "AI日报",
+          "property_date": null,
+          "property_type": "Post",
+          "property_status": "Published",
+          "property_title": "阿里云发布JVS Claw养虾AI产品；腾讯上线龙虾管家AI应用；StreamDiffusionV2实现实时视频生成；Perplexity放弃MCP转向CLI | 03月14日AI资讯"
+        },
+        "binary": {
+          "data": {
+            "mimeType": "image/jpeg",
+            "fileType": "image",
+            "fileExtension": "jpg",
+            "data": "filesystem-v2",
+            "directory": "https://api.screenshotone.com/take?access_key=L6evKi9L_kD_yQ&url=https%3A%2F%2Fwww.notion.so%2FJVS-Claw-AI-AI-StreamDiffusionV2-Perplexity-MCP-CLI-03-14-AI-323734116a15818d82bbf7dbaae7da89&format=jpg&dark_mode=true&full_page=true&selector=.notion-frame&image_quality=100&response_type=by_format",
+            "fileName": "take",
+            "id": "filesystem-v2:workflows/qpfabrD2vao3hJaV/executions/344/binary_data/18c659a0-2191-4dfd-9e5c-376ac110d5c8",
+            "fileSize": "306 kB",
+            "bytes": 306051
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Edit Image1": [
+      {
+        "json": {
+          "id": "32373411-6a15-818d-82bb-f7dbaae7da89",
+          "name": "阿里云发布JVS Claw养虾AI产品；腾讯上线龙虾管家AI应用；StreamDiffusionV2实现实时视频生成；Perplexity放弃MCP转向CLI | 03月14日AI资讯",
+          "url": "https://www.notion.so/JVS-Claw-AI-AI-StreamDiffusionV2-Perplexity-MCP-CLI-03-14-AI-323734116a15818d82bbf7dbaae7da89",
+          "property_summary": "",
+          "property_category": "AI日报",
+          "property_date": null,
+          "property_type": "Post",
+          "property_status": "Published",
+          "property_title": "阿里云发布JVS Claw养虾AI产品；腾讯上线龙虾管家AI应用；StreamDiffusionV2实现实时视频生成；Perplexity放弃MCP转向CLI | 03月14日AI资讯"
+        },
+        "binary": {
+          "data": {
+            "mimeType": "image/jpeg",
+            "fileType": "image",
+            "fileExtension": "jpg",
+            "data": "filesystem-v2",
+            "directory": "https://api.screenshotone.com/take?access_key=L6evKi9L_kD_yQ&url=https%3A%2F%2Fwww.notion.so%2FJVS-Claw-AI-AI-StreamDiffusionV2-Perplexity-MCP-CLI-03-14-AI-323734116a15818d82bbf7dbaae7da89&format=jpg&dark_mode=true&full_page=true&selector=.notion-frame&image_quality=100&response_type=by_format",
+            "fileName": "take",
+            "id": "filesystem-v2:workflows/qpfabrD2vao3hJaV/executions/345/binary_data/ee4cb34b-5364-4db9-8288-bf726728e85a",
+            "fileSize": "112 kB",
+            "bytes": 112018
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Notion": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion1": {
+      "main": [
+        [
+          {
+            "node": "Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Notion2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "标题",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "标题": {
+      "main": [
+        [
+          {
+            "node": "段落",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "段落": {
+      "main": [
+        [
+          {
+            "node": "url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "url": {
+      "main": [
+        [
+          {
+            "node": "分隔",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分隔": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "下载音频",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "下载音频": {
+      "main": [
+        [
+          {
+            "node": "Create a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Notion1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request5": {
+      "main": [
+        [
+          {
+            "node": "Edit Image1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Image1": {
+      "main": [
+        [
+          {
+            "node": "Create a database page1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a database page": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a database page1": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a2d08567-51bf-4b4a-b56a-14aec2d0757f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9f42aebc7bae1e15453ada7a9513ca46b68e3c2d6ce65a8169bd134cbf905c35"
+  },
+  "id": "qpfabrD2vao3hJaV",
+  "tags": []
+}
